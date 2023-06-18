@@ -64,10 +64,6 @@ static int profile_high_performance[] = {
     ALL_CPUS_PWR_CLPS_DIS_V3, 0x1,
     SCHED_BOOST_ON_V3, 0x1,
     SCHED_MOSTLY_IDLE_NR_RUN, 0x1,
-    SCHED_SPILL_NR_RUN, 0x1,
-    SCHED_RESTRICT_CLUSTER_SPILL, 0x0,
-    SCHED_GROUP_DOWN_MIGRATE, 0x5F,
-    SCHED_GROUP_UP_MIGRATE, 0x64,
     CPUS_ONLINE_MIN_BIG, 0x4,
     MIN_FREQ_BIG_CORE_0, 0xFFF,
     MIN_FREQ_LITTLE_CORE_0, 0xFFF,
@@ -180,7 +176,7 @@ static int process_video_encode_hint(void* metadata) {
     }
 
     if (video_encode_metadata.state == 1) {
-        if (is_interactive_governor(governor)) {
+        if (is_schedutil_governor(governor)) {
             if (is_target_SDM630()) {
                 /*
                     1. CPUfreq params
@@ -205,15 +201,14 @@ static int process_video_encode_hint(void* metadata) {
             } else {
                 /*
                     1. CPUfreq params
-                        - hispeed freq for little - 902Mhz
-                        - go hispeed load for little - 95
-                        - above_hispeed_delay for little - 40ms
+                        - hispeed load = 95
+                        - hispeed freq = 1401
                     2. BusDCVS V2 params
-                        - Sample_ms of 10ms
+                        - sample_ms = 20mS
                  */
-                int resource_values[] = {
-                        HISPEED_FREQ_LITTLE,        0x386, GO_HISPEED_LOAD_LITTLE, 0x5F,
-                        ABOVE_HISPEED_DELAY_LITTLE, 0x4,   CPUBW_HWMON_SAMPLE_MS,  0xA};
+                int resource_values[] = { 0x41440100, 0x5F,
+                                          0x4143C100, 0x579,
+                                          0x41820000, 0xA};
                 if (!video_encode_hint_sent) {
                     perform_hint_action(video_encode_metadata.hint_id, resource_values,
                                         ARRAY_SIZE(resource_values));
@@ -223,7 +218,7 @@ static int process_video_encode_hint(void* metadata) {
             }
         }
     } else if (video_encode_metadata.state == 0) {
-        if (is_interactive_governor(governor)) {
+        if (is_schedutil_governor(governor)) {
             undo_hint_action(video_encode_metadata.hint_id);
             video_encode_hint_sent = 0;
             return HINT_HANDLED;
@@ -331,7 +326,7 @@ int set_interactive_override(int on) {
 
     if (!on) {
         /* Display off */
-        if (is_interactive_governor(governor)) {
+        if (is_schedutil_governor(governor)) {
             if (is_target_SDM630()) {
                 /*
                     1. CPUfreq params
@@ -349,24 +344,21 @@ int set_interactive_override(int on) {
             } else {
                 /*
                     1. CPUfreq params
-                        - hispeed freq for little - 902Mhz
-                        - go hispeed load for little - 95
-                        - above_hispeed_delay for little - 40ms
+                        - hispeed load = 95
+                        - hispeed freq = 1401
                     2. BusDCVS V2 params
-                        - Sample_ms of 10ms
-                    3. Sched group upmigrate - 500
+                        - sample_ms = 20mS
                  */
-                int resource_values[] = {
-                        HISPEED_FREQ_LITTLE,        0x386, GO_HISPEED_LOAD_LITTLE, 0x5F,
-                        ABOVE_HISPEED_DELAY_LITTLE, 0x4,   CPUBW_HWMON_SAMPLE_MS,  0xA,
-                        SCHED_GROUP_UP_MIGRATE,     0x1F4};
+                int resource_values[] = { 0x41440100, 0x5F,
+                                          0x4143C100, 0x579,
+                                          0x41820000, 0xA};
                 perform_hint_action(DISPLAY_STATE_HINT_ID, resource_values,
                                     ARRAY_SIZE(resource_values));
             }
         }
     } else {
         /* Display on */
-        if (is_interactive_governor(governor)) {
+        if (is_schedutil_governor(governor)) {
             undo_hint_action(DISPLAY_STATE_HINT_ID);
         }
     }
